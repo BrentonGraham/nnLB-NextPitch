@@ -1,0 +1,56 @@
+---
+title: "nnLB: Next Pitch"
+subtitle: "A Novel Deep Learning Approach to MLB Pitch Prediction"
+author: "Brenton Graham"
+date: "2023-05-05"
+output: 
+  rmdformats::robobook
+---
+
+```{css, echo = FALSE}
+.book .book-body .page-inner {
+    max-width: 1200px;
+}
+``` 
+
+# Introduction
+Organizations across all major sports leagues have adopted data-driven decision-making approaches to remain current and competitive in recent decades. Among these leagues, Major League Baseball (MLB) is widely recognized as the pioneer in embracing analytics. In fact, an entire domain of sports-based analytics, termed *sabermetrics*, is devoted to baseball-specific statistics and analysis. Consequently, a wealth of high-resolution public data and untapped opportunities exist within the world of baseball.  
+
+Baseball enthusiasts would agree that success within the sport relies heavily on the game within the game. Identifying and exploiting small advantages can yield significant returns in achieving desired outcomes. Here, we introduce a deep learning method that utilizes in-game video footage to predict pitches. This endeavor is motivated by two factors. First, a reliable pitch classifier can provide batters with an edge during live at-bats. Second, an interpretable deep learning model can give pitchers insight into how predictable they are and how they can conceal their pitches more effectively.  
+
+# Related Work & Novelty
+Pitch prediction seems to be one of the most explored prediction tasks in baseball. Nevertheless, we seek to distinguish our work by utilizing novel feature sets and methodologies. Most well-cited articles focusing on binary and multiclass pitch prediction make use of traditional machine learning classifiers, such as linear discriminant analysis (LDA), support vector machines (SVM), and k-nearest neighbors (KNN)^[1](https://www.semanticscholar.org/paper/Predicting-the-Next-Pitch-Ganeshapillai-Guttag/e455030bd945ceffcbf2fc99bb12271ee9c013ff),[2](https://www.researchgate.net/publication/315544592_A_Dynamic_Feature_Selection_Based_LDA_Approach_to_Baseball_Pitch_Prediction),[3](https://content.iospress.com/articles/journal-of-sports-analytics/jsa171),[4](https://www.semanticscholar.org/paper/Applying-Machine-Learning-Techniques-to-Baseball-Hamilton-Hoang/c56a36aebb401fe41b34991c8a0933c0ba142caf)^. Deep learning models, including an attention-based long short-term memory recurrent neural network (LSTM-RNN) and an LSTM-based encoder-decoder, have also been used for pitch prediction^[5](https://community.fangraphs.com/no-pitch-is-an-island-pitch-prediction-with-sequence-to-sequence-deep-learning/),[6](https://ieeexplore.ieee.org/document/9859411)^. Each of these articles make use of tabular game data, however.  
+
+One article, a thesis from California Polytechnic State University, San Luis Obispo, approached the pitch classification problem from an innovative perspective^[7](https://digitalcommons.calpoly.edu/cgi/viewcontent.cgi?article=3865&context=theses)^. The author uses an object detection software ([Detectron2](https://github.com/facebookresearch/detectron2)) and a pose estimation software ([OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose)) to extract features from video data. These tools are specifically used to detect the pitcher's glove position and pose at a static time point (the pitcher's set position). Our aim is to build upon concepts from this work and to use methodologies that address this work's limitations. Similar to this work, we use the OpenPose pose estimation software to extract features that are used to classify pitches. Our methodology is novel, however, for the following reasons. First, the author uses a traditional machine learning model (Random Forest) for classification while we use deep learning models. Second, the author uses data from a static time point while we leverage information from time-series data. Third, the author was constrained to using small sample sizes ($n < 100$). We have developed a data collection process that allows us to obtain features from roughly 1,000 pitches per pitcher. Nonetheless, we applaud this author's innovations and would like to cite this work as our report's inspiration.
+
+# Methods 
+## Defining the Sample
+Prediction tasks must be segmented by pitcher since pitchers have unique motions, tendencies, and pitching arsenals (i.e., pitchers throw different types of pitches). As such, we decided to focus our proof-of-concept analysis on the two pitchers: Tyler Glasnow (2019 regular season) and Walker Buehler (2021 regular season). Further, most pitchers pitch from two separate positions (the windup and the stretch), which is conditional on game situation. We decided to focus on pitches thrown from the stretch since the motion is more compact. 
+
+## Data Collection
+### I. Web Scraping
+[BaseballSavant](https://baseballsavant.mlb.com/) is a website dedicated to providing the public with access to historical MLB data. These data include video footage and Statcast tabular data for every pitch thrown in the MLB since 2018 and 2015, respectively. We built web scrapers to retrieve both the video source URL and pitch type for every pitch of interest. Video source URLs were used as inputs for our feature extraction pipeline. 
+
+### II. Feature Extraction
+A highlight in our work is the feature extraction process, termed the *Video2Data* pipeline. The pipeline works as follows. First, a video is downloaded from the source URL and is converted to a series of images (or frames). Second, an object detection model is used to determine the location of the pitcher in each frame. The coordinates reported by the model are subsequently used to blur the background of each image. The object detection model used in this step is a custom Detectron2 model (Faster R-CNN) that was trained on a self-annotated dataset to specifically detect pitchers. This step is necessary for scalable and reliable feature extraction since the OpenPose pose estimation software (used in the following step) detects humans non-specifically. Third, the OpenPose pose estimation software is used on each image to extract the coordinates of 25 [keypoints](https://cmu-perceptual-computing-lab.github.io/openpose/web/html/doc/md_doc_02_output.html) on the pitcher's body. Keypoint coordinates from each frame are finally merged into a similar data structure. Example outputs generated at each step of the Video2Data pipeline are shown in Figure 1.
+
+```{r, echo=FALSE, out.width="33%", out.height="30%", fig.cap="Figure 1. Example Video2Data pipeline outputs. (1) Video to image conversion (left). (2) Pitcher detection and background blurring (middle). (3) OpenPose pose estimation (right).", fig.show='hold', fig.align='center'}
+knitr::include_graphics(c("pipeline-step1-vid2images.gif", "pipeline-step2-blur.gif", "pipeline-step3-plot.gif"))
+``` 
+
+### III. Data Preprocessing
+
+
+
+## Model Development
+### I. CNN-2D
+
+
+### II. CNN-3D
+
+
+### III. CNN-3D-LSTM
+
+
+### IV. Branched CNN-3D
+
