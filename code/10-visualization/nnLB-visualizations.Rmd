@@ -1,0 +1,116 @@
+---
+title: "nnLB-visualizations"
+author: "Brenton Graham"
+date: "2023-05-05"
+output: rmdformats::robobook
+downcute_theme: "chaos"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(dplyr)
+require(tidyverse)
+require(readr)
+require(ggpubr)
+require(kableExtra)
+```
+
+```{r}
+glasnow_data <- "kfold-cv-metrics.glasnow.csv" %>% 
+  read_delim(delim = ",") %>%
+  mutate(metric = ifelse(metric=="accuracy", "Accuracy", metric)) %>%
+  mutate(metric = ifelse(metric=="AUC", "ROC-AUC", metric)) %>%
+  mutate(metric = ifelse(metric=="F1", "F1-Score", metric)) %>%
+  mutate(metric = factor(metric, levels = c("ROC-AUC", "AUPRC", "MCC", "Accuracy", "F1-Score")))
+
+glasnow_plot <- ggplot(data = glasnow_data, aes(x = metric, y = value, fill = model)) +
+  stat_boxplot(geom = "errorbar", position = position_dodge(0.8), width = 0.2) + 
+  geom_boxplot(outlier.shape = 1, position = position_dodge(0.8), width = 0.7) + 
+  scale_fill_manual(values = c("#86BBD8", "#758E4F", "#F6AE2D", "#F26419")) + 
+  scale_y_continuous(limits=c(0.5, 1)) + 
+  labs(fill = "Model") + 
+  #ggtitle("Tyler Glasnow Binary Classification Metrics") +
+  theme_bw() +
+  theme(
+    #plot.title = element_text(hjust = 0.5, size = 14),
+    panel.grid.minor = element_blank(),
+    axis.title = element_blank(),
+    axis.text = element_text(size = 10),
+    legend.position = "bottom",
+    legend.text = element_text(size = 10))
+
+ggsave(plot=glasnow_plot, "tyler-glasnow-cv-plot.png", height = 4, width = 8, dpi = 450)
+show(glasnow_plot)
+```
+
+```{r}
+buehler_data <- "kfold-cv-metrics.buehler.csv" %>% 
+  read_delim(delim = ",") %>%
+  mutate(metric = ifelse(metric=="accuracy", "Accuracy", metric)) %>%
+  mutate(metric = ifelse(metric=="F1", "F1-Score", metric)) %>%
+  mutate(metric = factor(metric, levels = c("MCC", "Accuracy", "F1-Score")))
+
+buehler_cv_plot <- ggplot(data = buehler_data, aes(x = metric, y = value, fill = model)) +
+  stat_boxplot(geom = "errorbar", position = position_dodge(0.8), width = 0.2) + 
+  geom_boxplot(outlier.shape = 1, position = position_dodge(0.8), width = 0.7) + 
+  scale_fill_manual(values = c("#86BBD8", "#758E4F", "#F6AE2D", "#F26419")) + 
+  scale_y_continuous(limits=c(0.18, 0.82)) + 
+  labs(fill = "Model") + 
+  theme_bw() +
+  theme(
+    #plot.title = element_text(hjust = 0.5),
+    panel.grid.minor = element_blank(),
+    axis.title = element_blank(),
+    axis.text = element_text(size = 11),
+    legend.position = "bottom",
+    legend.text = element_text(size = 11))
+
+buehler_ovr_data <- "kfold-cv-metrics-ovr.buehler.csv" %>%
+  read_delim(delim = ",") %>%
+  mutate(metric = ifelse(metric=="auc", "ROC-AUC (One-vs-Rest)", metric)) %>%
+  mutate(metric = ifelse(metric=="auprc", "AUPRC (One-vs-Rest)", metric)) %>%
+  mutate(model = factor(
+    model, levels = c("cnn-xtra", "cnn", "cnn-lstm", "branched-cnn"),
+    labels = c("CNN-2D", "CNN-3D", "CNN-3D-LSTM", "CNN-Branched"))) %>%
+  mutate(metric = factor(metric, levels = c("ROC-AUC (One-vs-Rest)", "AUPRC (One-vs-Rest)")))
+
+buehler_cv_ovr_plot <- ggplot(data = buehler_ovr_data, aes(x = pitch_type, y = value, fill = model)) +
+  stat_boxplot(geom = "errorbar", position = position_dodge(0.8), width = 0.2) + 
+  geom_boxplot(outlier.shape = 1, position = position_dodge(0.8), width = 0.7) + 
+  facet_wrap(~metric) +
+  scale_fill_manual(values = c("#86BBD8", "#758E4F", "#F6AE2D", "#F26419")) +
+  scale_y_continuous(limits=c(0.2, 1)) + 
+  labs(fill = "Model") + 
+  theme_bw() +
+  theme(
+    #plot.title = element_text(hjust = 0.5),
+    panel.grid.minor = element_blank(),
+    strip.text = element_text(size = 11),
+    axis.title = element_blank(),
+    axis.text = element_text(size = 11),
+    legend.position = "bottom",
+    legend.text = element_text(size = 11))
+
+buehler_plot <- ggarrange(buehler_cv_plot, buehler_cv_ovr_plot, ncol = 1, nrow = 2, common.legend = TRUE, legend = "bottom")
+#buehler_plot <- annotate_figure(buehler_plot, top = text_grob("Walker Buehler Multi-Class Classification Metrics", size = 14))
+ggsave(plot=buehler_plot, "walker-buehler-cv-plot.png", height = 6, width = 8, dpi = 450)
+show(buehler_plot)
+```
+
+```{r}
+buehler_table_data <- "cv-performance-table.buehler.csv" %>%
+  read_delim(delim = ",")
+
+col_names <- c('Model', 'Actual↓ Predicted→', 'FB', 'FBwM', 'OFF', 'Precision', 'Recall', 'F1-Score', 'ROC-AUC (OvR)', 'AUPRC (OvR)',	'Test Support')
+kbl(buehler_table_data, booktabs = TRUE, align = "c", col.names = col_names) %>%
+  column_spec(2, bold = T) %>%
+  row_spec(c(1:3, 7:9), background = "#EDEDED") %>%
+  collapse_rows(1, valign = "middle") %>%
+  kable_styling() %>%
+  add_header_above(c(" " = 1, "Confusion Matrices" = 4, "Performance Evaluation" = 6))
+```
+
+
+
+
+
