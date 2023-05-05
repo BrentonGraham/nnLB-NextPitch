@@ -13,6 +13,26 @@ output:
 }
 ``` 
 
+```{css, echo=FALSE}
+table { caption-side: bottom }
+```
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+require(dplyr)
+require(kableExtra)
+require(readr)
+require(ggplot2)
+require(ggpubr)
+```
+
+```{r global.options, include = FALSE}
+knitr::opts_chunk$set(
+    fig.align   = 'center',
+    echo        = FALSE,
+    message     = FALSE,
+    warning     = FALSE)
+```
+
 # Introduction
 Organizations across all major sports leagues have adopted data-driven decision-making approaches to remain current and competitive in recent decades. Among these leagues, Major League Baseball (MLB) is widely recognized as the pioneer in embracing analytics. In fact, an entire domain of sports-based analytics, termed *sabermetrics*, is devoted to baseball-specific statistics and analysis. Consequently, a wealth of high-resolution public data and untapped opportunities exist within the world of baseball.  
 
@@ -21,36 +41,305 @@ Baseball enthusiasts would agree that success within the sport relies heavily on
 # Related Work & Novelty
 Pitch prediction seems to be one of the most explored prediction tasks in baseball. Nevertheless, we seek to distinguish our work by utilizing novel feature sets and methodologies. Most well-cited articles focusing on binary and multiclass pitch prediction make use of traditional machine learning classifiers, such as linear discriminant analysis (LDA), support vector machines (SVM), and k-nearest neighbors (KNN)^[1](https://www.semanticscholar.org/paper/Predicting-the-Next-Pitch-Ganeshapillai-Guttag/e455030bd945ceffcbf2fc99bb12271ee9c013ff),[2](https://www.researchgate.net/publication/315544592_A_Dynamic_Feature_Selection_Based_LDA_Approach_to_Baseball_Pitch_Prediction),[3](https://content.iospress.com/articles/journal-of-sports-analytics/jsa171),[4](https://www.semanticscholar.org/paper/Applying-Machine-Learning-Techniques-to-Baseball-Hamilton-Hoang/c56a36aebb401fe41b34991c8a0933c0ba142caf)^. Deep learning models, including an attention-based long short-term memory recurrent neural network (LSTM-RNN) and an LSTM-based encoder-decoder, have also been used for pitch prediction^[5](https://community.fangraphs.com/no-pitch-is-an-island-pitch-prediction-with-sequence-to-sequence-deep-learning/),[6](https://ieeexplore.ieee.org/document/9859411)^. Each of these articles make use of tabular game data, however.  
 
-One article, a thesis from California Polytechnic State University, San Luis Obispo, approached the pitch classification problem from an innovative perspective^[7](https://digitalcommons.calpoly.edu/cgi/viewcontent.cgi?article=3865&context=theses)^. The author uses an object detection software ([Detectron2](https://github.com/facebookresearch/detectron2)) and a pose estimation software ([OpenPose](https://github.com/CMU-Perceptual-Computing-Lab/openpose)) to extract features from video data. These tools are specifically used to detect the pitcher's glove position and pose at a static time point (the pitcher's set position). Our aim is to build upon concepts from this work and to use methodologies that address this work's limitations. Similar to this work, we use the OpenPose pose estimation software to extract features that are used to classify pitches. Our methodology is novel, however, for the following reasons. First, the author uses a traditional machine learning model (Random Forest) for classification while we use deep learning models. Second, the author uses data from a static time point while we leverage information from time-series data. Third, the author was constrained to using small sample sizes ($n < 100$). We have developed a data collection process that allows us to obtain features from roughly 1,000 pitches per pitcher. Nonetheless, we applaud this author's innovations and would like to cite this work as our report's inspiration.
+One article, a thesis from California Polytechnic State University, San Luis Obispo, approached the pitch classification problem from an innovative perspective^[7](https://digitalcommons.calpoly.edu/cgi/viewcontent.cgi?article=3865&context=theses)^. The author uses an object detection software ([`Detectron2`](https://github.com/facebookresearch/detectron2)) and a pose estimation software ([`OpenPose`](https://github.com/CMU-Perceptual-Computing-Lab/openpose)) to extract features from video data. These tools are specifically used to detect the pitcher's glove position and pose at a static time point (the pitcher's set position). Our aim is to build upon concepts from this work and to use methodologies that address this work's limitations. Similar to this work, we use the OpenPose pose estimation software to extract features that are used to classify pitches. Our methodology is novel, however, for the following reasons. First, the author uses a traditional machine learning model (Random Forest) for classification while we use deep learning models. Second, the author uses data from a static time point while we leverage information from time-series data. Third, the author was constrained to using small sample sizes ($n < 100$). We have developed a data collection process that allows us to obtain features from roughly 1,000 pitches per pitcher. Nonetheless, we applaud this author's innovations and would like to cite this work as our report's inspiration.
 
 # Methods 
 ## Defining the Sample
-Prediction tasks must be segmented by pitcher since pitchers have unique motions, tendencies, and pitching arsenals (i.e., pitchers throw different types of pitches). As such, we decided to focus our proof-of-concept analysis on the two pitchers: Tyler Glasnow (2019 regular season) and Walker Buehler (2021 regular season). Further, most pitchers pitch from two separate positions (the windup and the stretch), which is conditional on game situation. We decided to focus on pitches thrown from the stretch since the motion is more compact. 
+Prediction tasks must be segmented by pitcher since pitchers have unique motions, tendencies, and pitching arsenals (i.e., pitchers throw different types of pitches). As such, we decided to focus our proof of concept analysis on two pitchers: Tyler Glasnow (2019 regular season) and Walker Buehler (2021 regular season). Further, most pitchers pitch from two separate positions (the windup and the stretch), which is conditional on game situation. We decided to focus on pitches thrown from the stretch since the motion is more compact. 
 
 ## Data Collection
 ### I. Web Scraping
-[BaseballSavant](https://baseballsavant.mlb.com/) is a website dedicated to providing the public with access to historical MLB data. These data include video footage and Statcast tabular data for every pitch thrown in the MLB since 2018 and 2015, respectively. We built web scrapers to retrieve both the video source URL and pitch type for every pitch of interest. Video source URLs were used as inputs for our feature extraction pipeline. 
+[BaseballSavant](https://baseballsavant.mlb.com/) is a website dedicated to providing the public with access to historical MLB data. These data include video footage and Statcast tabular data for every pitch thrown in the MLB since 2018 and 2015, respectively. We built web scrapers to retrieve both the video source URL and pitch type for every pitch of interest. Video source URLs were used as inputs for our feature engineering pipeline. 
 
-### II. Feature Extraction
-A highlight in our work is the feature extraction process, termed the *Video2Data* pipeline. The pipeline works as follows. First, a video is downloaded from the source URL and is converted to a series of images (or frames). Second, an object detection model is used to determine the location of the pitcher in each frame. The coordinates reported by the model are subsequently used to blur the background of each image. The object detection model used in this step is a custom Detectron2 model (Faster R-CNN) that was trained on a self-annotated dataset to specifically detect pitchers. This step is necessary for scalable and reliable feature extraction since the OpenPose pose estimation software (used in the following step) detects humans non-specifically. Third, the OpenPose pose estimation software is used on each image to extract the coordinates of 25 [keypoints](https://cmu-perceptual-computing-lab.github.io/openpose/web/html/doc/md_doc_02_output.html) on the pitcher's body. Keypoint coordinates from each frame are finally merged into a similar data structure. Example outputs generated at each step of the Video2Data pipeline are shown in Figure 1.
+### II. Feature Engineering
+A highlight in our work is the feature engineering process, termed the *Video2Data* pipeline. The pipeline works as follows. First, a video is downloaded from the source URL and is converted to a series of images (or frames). Second, an object detection model is used to determine the location of the pitcher in each frame. The coordinates reported by the model are subsequently used to blur the background of each image. Blurring is performed using [`OpenCV`](https://docs.opencv.org/4.x/d2/d96/tutorial_py_table_of_contents_imgproc.html). The object detection model used in this step is a custom Detectron2 model (Faster R-CNN) that was trained on a self-annotated data set to specifically detect pitchers. This step is necessary for scalable and reliable feature extraction since the OpenPose pose estimation software (used in the following step) detects humans non-specifically. Third, the OpenPose pose estimation software is used on each image to extract the coordinates of 25 [keypoints](https://cmu-perceptual-computing-lab.github.io/openpose/web/html/doc/md_doc_02_output.html) on the pitcher's body. Keypoint coordinates from each frame are finally merged into a similar data structure. Example outputs generated at each step of the Video2Data pipeline are shown in Figure 1.
 
-```{r, echo=FALSE, out.width="33%", out.height="30%", fig.cap="Figure 1. Example Video2Data pipeline outputs. (1) Video to image conversion (left). (2) Pitcher detection and background blurring (middle). (3) OpenPose pose estimation (right).", fig.show='hold', fig.align='center'}
+```{r, out.width = "33%", out.height = "30%", fig.show = 'hold', fig.cap = "Figure 1. Example Video2Data pipeline outputs. (1) Video to image conversion (left). (2) Pitcher detection and background blurring (middle). (3) OpenPose pose estimation (right)."}
 knitr::include_graphics(c("pipeline-step1-vid2images.gif", "pipeline-step2-blur.gif", "pipeline-step3-plot.gif"))
 ``` 
 
 ### III. Data Preprocessing
+Videos accessible through BaseballSavant are inherently inconsistent (i.e., in terms of video duration, camera perspective, etc). Additionally, the Video2Data pipeline produced some undesired artifacts that could be harmful for machine learning applications (e.g., missingness and pose estimation errors). As such, we implemented a data cleaning process that both detects/removes unusable observations and prepares usable observations for modeling.  
 
+The first step of our data preprocessing method addresses the inconsistent video duration problem. To crop each video to a similar range, we use pose estimation data to identify the frame at which the pitcher's knee reaches it's $y_{max}$, which we refer to as $t_{y_{max}}$ (i.e., the frame at which the left knee's $y$-coordinate is maximized if the pitcher is right-handed, and vice versa). We decided to use $t_{y_{max}}$ as a reference time point since $t_{y_{max}}$ reliably corresponds to a common event in a pitcher's delivery (termed the peak leg lift), irrespective of who is pitching. We then use $t_{y_{max}}$ to determine the start and end frames, termed $t_{start}$ and $t_{end}$, using Equations 1-3. Briefly, $t_{start}$ and $t_{end}$ are computed for each observation and are used to crop each observation's OpenPose coordinate data to a common 15 time points. An example of the frame range included for our prediction task is shown in Figure 2. Observations with $t_{start} < 0$ are considered to have an insufficient number of frames for inclusion and are removed from consideration.  
+
+$$
+n_{frames} = 15 \tag{Equations 1-3}\\
+t_{end} = t_{y_{max}} + 2\\
+t_{start} = t_{end} - (n_{frames}-1)\\
+$$
+
+```{r, out.width = "45%", out.height = "30%", fig.show = 'hold', fig.cap = "Figure 2. An example of the cropped frame range used for pitch classification."}
+knitr::include_graphics(c("fig2-1.gif", "fig2-2.gif"))
+``` 
+
+The second step of our data preprocessing method aims to further remove erroneous observations. Three selection criteria are used for evaluation, outside of the criteria established previously. First, we require the angle between each knee at $t_{y_{max}}$ (the peak leg lift) to be between 40° and 90°. This selection criteria allows us to identify video footage that is taken from an atypical camera perspective, given that the standard camera perspective faces from center field to home plate. For example, in no circumstance would the angle between knees at $t_{y_{max}}$ be between 40° and 90° if the video camera is facing from third to first base. Second, we require observations to have at least 80% of $x$, $y$ coordinate pairs available. Third, we perform a manual inspection using data visualizations to identify erroneous observations that were not filtered using the aforementioned selection criteria.  
+
+The third and final step of our data preprocessing method involves preparing selected observations for modeling. First, we handle missing coordinate data using the [`pandas`](https://pandas.pydata.org/) time series aware interpolate() function. Second, we select 10 keypoints (or body parts) to include in downstream applications. These keypoints include the neck, the left and right hip, the left and right knee, the left and right ankle, and the wrist, elbow, and shoulder of the pitcher's throwing arm (e.g., the right wrist, elbow, and shoulder for right-handed pitchers). Third, we normalize all $x$ and $y$ coordinates for a given observation to be between 0 and 1. The $x$ coordinates for a given observation are normalized using $x_{min}$ and $x_{max}$ from the full set of $x$ coordinates for that particular observation (i.e., the $x$ values from all keypoints). The $y$ coordinates for a given observation are similarly normalized. The aim here is to address between-video variation in pitcher location and scale. This normalization step is not to be confused with the feature scaling step that is used during modeling. Fourth, and finally, we label our observations with the pitch type outcome. Many well-cited articles dichotomize the pitch prediction task into a binary classification problem of predicting fastball versus non-fastball. In this report, we dichotomize the pitch prediction task into three classes based on Statcast labeling: fastball (FB), fastball with movement (FBwM), and off-speed (OFF). This dichotomization is presented in Table 1. Note that Tyler Glasnow's pitch type set includes only fastballs and off-speed pitches. Thus, Tyler Glasnow's pitch prediction task is dichotomized into a binary classification problem. The final feature set was three-dimensional per observation and took the shape of (15, 10, 2) (i.e., 15 time points, 10 body parts, and two coordinates ($x$, $y$)).  
+
+```{r}
+data.frame(
+  "Pitch Type Class" = c("FB", "FBwM", "OFF"),
+  "Class Make Up" = c(
+    "Fastball (FA), Four-Seam Fastball (FF)",
+    "Two-Seam Fastball/Sinker (FT/SI), Cutter (FC), Splitter (FS/SF)",
+    "Changeup (CH), Slider (SL), Curveball (CB/CU), Knuckle-Curve (KC), Knuckleball (KN)")) %>%
+  kbl(booktabs = TRUE, align = "c", col.names = c("Pitch Type Class", "Class Make Up"),
+      caption = "<center><i>Table 1. Outcome dichotomization.<i><center>") %>%
+  row_spec(c(2), background = "#EDEDED") %>%
+  column_spec(1, bold = T) %>%
+  kable_styling()
+```
 
 
 ## Model Development
-### I. CNN-2D
+### Model Specifications
+We designed four candidate convolutional neural network (CNN) architectures for our prediction task. Architecture specifics are described in the section below. Constant model hyperparameters and training methods are specified here. All models utilize the Adam optimizer with a starting learning rate of $1 \times 10^{-4}$, and a batch size of 16. Learning rates were reduced by a factor of $0.5 \times 10^{-2}$ during training if the validation loss did not improve for 10 epochs. Similar dropout layers and regularization penalties were used for each model. We used a dropout rate of 0.3 in dropout layers and applied L1 and L2 regularization penalties ($1 \times 10^{-2}$ and $1 \times 10^{-4}$, respectively) on the kernel of each model's last three (non-output) dense layers. The maximum number of epochs was set to 200. Training was stopped early, however, if validation loss did not decrease over the course of 50 epochs. Binary cross-entropy and categorical cross-entropy were used as the loss functions for binary and multiclass classification models, respectively. Loss functions were weighted according to outcome class weights to account for class imbalance. Binary and multiclass classification models use sigmoid and softmax activation functions in the output layer, respectively. All models were implemented using [`Keras`](https://keras.io/) (version 2.12.0) in Python (version 3.10.11).
 
+### Model Evaluation
+Prior to modeling, we split the data set into a cross-validation (CV) set (80% of the data) and holdout test set (20% of the data). CV and test set sample sizes are shown for each pitcher in Table 2. Data set splits were stratified by the outcome to ensure balanced class representation across each set. We then used stratified $k$-fold CV with five folds to evaluate each candidate architecture. During 5-fold CV, the CV data set is split into 5 folds. Five separate models (per candidate model) are then trained using $k-1$ (four) folds as the training data set and one fold as the validation data set. The original holdout test set is used to evaluate each of the five models. Features were standardized by removing the mean and scaling to unit variance. The mean and variance values used for standardization were learned from the training set and applied to the validation set and holdout test set during each round of 5-fold CV.
+
+```{r}
+col_names <- c('Pitch Type', 'CV Set', 'Test Set', 'Class % (Test)',	'CV Set', 'Test Set', 'Class % (Test)')
+data.frame(
+  "pitch_type" = c("FB", "FBwM", "OFF", "Total"),
+  "glasnow_cv" = c(373, NA, 202, 575),
+  "glasnow_test" = c(93, NA, 51, 144),
+  "glassnow_class_perc" = c("64.6%", NA, "35.4%", "719"),
+  "buehler_cv" = c(297, 170, 249, 716),
+  "buehler_test" = c(75, 42, 63, 180),
+  "buehler_class_perc" = c("41.7%", "23.3%", "35%", "896")) %>%
+  kbl(booktabs = TRUE, align = "c", col.names = col_names,
+    caption = "<center><i>Table 2. Cross-validation set and holdout test set sample sizes.<i><center>") %>%
+  row_spec(c(1, 3), background = "#EDEDED") %>%
+  column_spec(1, bold = T) %>%
+  kable_styling() %>%
+  add_header_above(c(" " = 1, "Tyler Glasnow" = 3, "Walker Buehler" = 3), font_size = 18)
+```
+
+Prediction accuracy, area under the receiver operating characteristic curve (ROC-AUC), area under the precision-recall curve (AUPRC), Matthew's correlation coefficient (MCC), and weighted F1-score were used to evaluate the predictive performance of each model. We report the mean of each performance metric (from the aforementioned 5-fold CV, using the original holdout test set for evaluation) for each model architecture. Additionally, we use one-vs-rest (OvR) ROC-AUC and AUPRC for multiclass classification evaluation since ROC-AUC and AUPRC are traditionally used for binary classification. The one-vs-rest approach binarizes the predictions into reference and non-reference classes to compute metrics (in this case ROC-AUC and AUPRC) for each class. MCC serves as a useful all-purpose metric for between-pitcher comparisons since it can be used to evaluate both binary and multiclass prediction performance.  
+
+## Candidate Model Architectures
+### I. CNN-2D
+The *CNN-2D* model was originally designed as a baseline model that the more complex model architectures could be compared to. We term this model architecture *CNN-2D* since we reshape the 3-dimensional (3D) input shape of (15, 10, 2) to a 2-dimensional (2D) shape (10, 30) (i.e., the time steps and $x$, $y$ coordinates are collapsed). We additionally tried using a 2D input shape of (15, 20), whereby the body part dimension and $x$, $y$ coordinates are collapsed, but ultimately chose the (10, 30) configuration due to improved performance. The CNN-2D architecture consists of four convolutional layers that are connected to a series of six dense layers. Convolutional layers consist of 2D convolutions, using kernels of size (3, 1), followed by batch normalization and rectified linear unit (ReLU) activation functions. We found that (3, 1) kernels outperformed (3, 3) kernels in terms of ROC-AUC and accuracy. An increasing number of filters (8, 16, 32, and 64 filters) were used for consecutive convolutional layers. The output of the convolutional block is connected to a series of six fully connected dense layers. The first five dense layers incorporate 256 (with dropout), 128 (with dropout), 64 (with regularization), 32 (with regularization), and 16 (with regularization) nodes and ReLU activations. The final dense layer (the output layer) consists of one node when the sigmoid activation function is used and three nodes when the softmax activation function is used.  
 
 ### II. CNN-3D
-
+The *CNN-3D* model architecture strongly resembles the CNN-2D model architecture, although the 3D input shape is preserved (hence *CNN-3D*). Distinct from the CNN-2D model architecture, convolutional layers use 3D convolutions with kernels of size (3, 3, 1). We were restricted to using this kernel size due to the size of the 3D input. All other model architecture details are consistent with the CNN-2D model architecture.  
 
 ### III. CNN-3D-LSTM
+The *CNN-3D-LSTM* model architecture builds off of the CNN-3D model architecture by incorporating a 256-unit long short-term memory (LSTM) layer between the convolutional block and dense layers. All other model architecture details are identical to the CNN-3D model architecture.  
 
+### IV. Branched CNN
+The *Branched CNN* model architecture was inspired from an article that uses a convolutional neural network to predict mortality from 12-lead electrocardiogram voltage data^[8](https://www.nature.com/articles/s41591-020-0870-z)^. Briefly, the Branched CNN model architecture consists of 10 separate convolutional branches that independently extract features from each keypoint (or body part). The features extracted by each branch are concatenated and fed to a series of fully connected dense layers that are identical to all other model architectures. Similar to the convolutional block used in the CNN-2D architecture, each branch consists of four convolutional layers that use 2D convolutions and kernels of size (3, 1). However, ReLU activations are (unconventionally) used directly after convolutions (and before batch normalization). We found that that the Conv2D-BatchNormalization-ReLU configuration used in other model architectures led to inconsistent and diminished model performance. Additionally, global average pooling is independently applied to the output of each convolutional branch prior to concatenation.  
 
-### IV. Branched CNN-3D
+# Results
+## Tyler Glasnow
+Binary pitch classification results from Tyler Glasnow's 2019 regular season are shown in Table 3 and Figure 3 below. The CNN-2D model definitively outperformed all other models, achieving impressive AUC and AUPRC scores of 0.919 and 0.839 on the holdout test data set, respectively. An AUC greater than 0.9 suggests that the model is able to discriminate between fastballs and off-speed pitches exceptionally well. Further, the model's prediction capability surpasses that of a naive classifier (i.e., a model that strictly predicts the majority class) substantially, achieving an accuracy of 87.1% (compared to a naive classifier's accuracy of 64.6%). To put this result into perspective, the model was able to accurately predict almost eight out of every nine pitches.  
+
+```{r}
+glasnow_table_data <- "../code/saved-model-results/cv-performance/cv-performance-table.glasnow.csv" %>%
+  read_delim(delim = ",") %>%
+  dplyr::select(model, F1, everything()) %>%
+  mutate(majority_class = paste0(round(93/(93+51), 3) * 100, "%")) %>%
+  mutate(accuracy = paste0(accuracy * 100, "%")) %>% 
+  mutate(model = ifelse(model == "CNN-Branched", "Branched CNN", model))
+
+col_names <- c('Model', 'F1-Score (Weighted)', 'ROC-AUC', 'AUPRC',	'MCC', 'Accuracy', 'Majority Class %')
+kbl(glasnow_table_data, booktabs = TRUE, align = "c", col.names = col_names,
+    caption = "<center><i>Table 3. Tyler Glasnow binary pitch classification evaluation, stratified by model type. Reported metrics are mean values from 5-fold cross-validation, whereby the holdout test data set was used for evaluation.<i><center>") %>%
+  row_spec(c(1, 3), background = "#EDEDED") %>%
+  kable_styling() %>%
+  column_spec(1, bold = T) %>%
+  add_header_above(c(" " = 1, "Performance Evaluation" = 6), font_size = 18)
+```
+
+```{r}
+glasnow_auc_data <- "../code/saved-model-results/cv-performance/auc.glasnow.csv" %>%
+  read_delim(delim = ",") %>%
+  mutate(model = factor(model, levels = c("CNN-2D", "CNN-3D", "CNN-3D-LSTM", "CNN-Branched"),
+    labels = c("CNN-2D", "CNN-3D", "CNN-3D-LSTM", "Branched CNN")))
+
+glasnow_auprc_data <- "../code/saved-model-results/cv-performance/auprc.glasnow.csv" %>%
+  read_delim(delim = ",") %>%
+  mutate(model = factor(model, levels = c("CNN-2D", "CNN-3D", "CNN-3D-LSTM", "CNN-Branched"),
+    labels = c("CNN-2D", "CNN-3D", "CNN-3D-LSTM", "Branched CNN"))) %>%
+  filter(recall > 0)
+
+# AUC
+glasnow_auc <- ggplot(glasnow_auc_data) +
+  geom_line(aes(x = fpr, y = tpr, color = model), lwd = 1) +
+  geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), linetype = "dashed", lwd = 0.2, color = "gray70") +
+  labs(x = "1 - Specificity", y = "Sensitivity") +
+  scale_x_continuous(expand=c(0, 0), limits = c(0, 1), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
+  scale_y_continuous(expand=c(0, 0), limits = c(0, 1), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
+  scale_color_manual(
+    values = c("#86BBD8", "#758E4F", "#F6AE2D", "#F26419"),
+    labels = c("CNN-2D (AUC = 0.919)", "CNN-3D (AUC = 0.896)", "CNN-3D-LSTM (AUC = 0.889)", "Branched CNN (AUC = 0.877)")) +
+  #ggtitle("ROC Curve") +
+  theme_bw() +
+  theme(
+    #plot.title = element_text(hjust = 0.5, size = 14),
+    legend.title = element_blank(),
+    legend.position = c(0.68, 0.19),
+    legend.text = element_text(size = 9.5),
+    legend.background = element_blank(),
+    axis.title = element_text(size = 11),
+    panel.grid = element_blank())
+
+# AUPRC
+glasnow_auprc <- ggplot(glasnow_auprc_data) +
+  geom_line(aes(x = recall, y = precision, color = model), lwd = 1) +
+  labs(x = "Recall", y = "Precision") +
+  geom_segment(
+    aes(x = 0, xend = 1, y = min(glasnow_auprc_data$precision), yend = min(glasnow_auprc_data$precision)), 
+    linetype = "dashed", lwd = 0.2, color = "gray60") +
+  scale_x_continuous(expand=c(0, 0), limits = c(0, 1), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
+  scale_y_continuous(expand=c(0, 0), limits = c(0, 1), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
+  scale_color_manual(
+    values = c("#86BBD8", "#758E4F", "#F6AE2D", "#F26419"),
+    labels = c("CNN-2D (AUPRC = 0.839)", "CNN-3D (AUPRC = 0.809)", "CNN-3D-LSTM (AUPRC = 0.810)", "Branched CNN (AUPRC = 0.774)")) +
+  #ggtitle("Precision-Recall Curve") +
+  theme_bw() +
+  theme(
+    #plot.title = element_text(hjust = 0.5, size = 14),
+    legend.title = element_blank(),
+    legend.position = c(0.66, 0.19),
+    legend.text = element_text(size = 9.5),
+    legend.background = element_blank(),
+    axis.title = element_text(size = 11),
+    panel.grid = element_blank())
+
+auc_auprc_curves <- ggarrange(glasnow_auc, glasnow_auprc, ncol = 2)
+
+# 5-fold CV
+glasnow_data <- "../code/saved-model-results/cv-performance/kfold-cv-metrics.glasnow.csv" %>% 
+  read_delim(delim = ",") %>%
+  filter(metric %in% c("F1", "accuracy", "MCC")) %>%
+  mutate(metric = ifelse(metric=="accuracy", "Accuracy", metric)) %>%
+  mutate(metric = ifelse(metric=="F1", "F1-Score", metric)) %>%
+  mutate(metric = factor(metric, levels = c("F1-Score", "Accuracy", "MCC"))) %>% 
+  mutate(model = ifelse(model == "CNN-Branched", "Branched CNN", model)) %>%
+  mutate(model = factor(model, levels = c("CNN-2D", "CNN-3D", "CNN-3D-LSTM", "Branched CNN"),
+    labels = c("CNN-2D", "CNN-3D", "CNN-3D-LSTM", "Branched CNN")))
+
+glasnow_metrics <- ggplot(data = glasnow_data, aes(x = metric, y = value, fill = model)) +
+  stat_boxplot(geom = "errorbar", position = position_dodge(0.8), width = 0.2) + 
+  geom_boxplot(outlier.shape = 1, position = position_dodge(0.8), width = 0.7) + 
+  scale_fill_manual(values = c("#86BBD8", "#758E4F", "#F6AE2D", "#F26419")) + 
+  scale_y_continuous(limits=c(0.5, 1)) + 
+  labs(fill = "Model") + 
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    axis.title = element_blank(),
+    axis.text = element_text(size = 10),
+    legend.position = "bottom",
+    legend.text = element_text(size = 10))
+
+glasnow_plot <- ggarrange(auc_auprc_curves, glasnow_metrics, ncol = 1)
+ggsave(plot=glasnow_plot, "../code/saved-model-results/plots/tyler-glasnow-cv-plot.png", height = 7, width = 8, dpi = 450)
+```
+```{r, fig.show = 'hold', out.width = "70%", fig.cap = "Figure 3. Multiclass pitch classification metric visualization for Tyler Glasnow."}
+knitr::include_graphics(c("../code/saved-model-results/plots/tyler-glasnow-cv-plot.png"))
+``` 
+
+## Walker Buehler
+Multiclass pitch classification results from Walker Buehler's 2021 regular season are shown in Table 4 and Figure 4 below. Again, the CNN-2D model definitively outperformed all other models, achieving a weighted F1-score of 0.638 and 63.6% accuracy (compared to a naive classifier's accuracy of 41.7%). On the surface, the results here are not as compelling as those reported for the binary classification of Tyler Glasnow's pitches. The results are a bit more interesting, however, when considering class-specific performance metrics such as one-versus-rest AUC. The model achieves one-versus-rest AUC scores of 0.825 and 0.852 for fastballs and off-speed pitches, respectively. This indicates that the model is able to effectively discriminate between both fastballs and non-fastballs and off-speed and non-off-speed pitches. The model's performance is hampered by an inability to discriminate between fastballs with movement and other pitch types. All things considered, we might expect to see more exciting results if we converted this multiclass prediction task to a binary prediction task.  
+
+```{r}
+buehler_table_data <- "../code/saved-model-results/cv-performance/cv-performance-table.buehler.csv" %>%
+  read_delim(delim = ",") %>%
+  dplyr::select(-c(precision, recall)) %>%
+  mutate(accuracy = case_when(
+    pitch_type == "Weighted Ave." ~ NA,
+    model == "CNN-2D" ~ paste0(round(((270 + 93 + 209)/(180*5) * 100), 1), "%"),
+    model == "CNN-3D" ~ paste0(round(((253 + 72 + 209)/(180*5) * 100), 1), "%"),
+    model == "CNN-3D-LSTM" ~ paste0(round(((250 + 94 + 179)/(180*5) * 100), 1), "%"),
+    model == "CNN-Branched" ~ paste0(round(((241 + 51 + 159)/(180*5) * 100), 1), "%")
+  )) %>%
+  mutate(class_perc = ifelse(test_support == 180, NA, paste0(round(test_support/180*100, 1), "%"))) %>%
+  mutate(MCC = ifelse(class_perc == "Weighted Ave.", NA, MCC)) %>%
+  dplyr::select(-test_support) %>% 
+  mutate(model = ifelse(model == "CNN-Branched", "Branched CNN", model))
+
+options(knitr.kable.NA = '--')
+col_names <- c('Model', 'Actual↓ Predicted→', 'FB', 'FBwM', 'OFF', 'F1-Score', 'ROC-AUC (OvR)', 'AUPRC (OvR)', 'MCC', 'Accuracy', 'Class %')
+kbl(buehler_table_data, booktabs = TRUE, align = "c", col.names = col_names,
+    caption = "<center><i>Table 4. Walker Buehler multiclass pitch classification evaluation, stratified by model type. Reported metrics are mean values from 5-fold cross-validation, whereby the holdout test data set was used for evaluation. Confusion matrices report the culmination of predictions from all 5 CV models.<i><center>") %>%
+  column_spec(1:2, bold = T) %>%
+  row_spec(c(1:4, 9:12), background = "#EDEDED") %>%
+  kable_styling() %>%
+  add_header_above(c(" " = 1, "Confusion Matrices" = 4, "Performance Evaluation" = 6), font_size = 18) %>%
+  collapse_rows(c(1, 9, 10), valign = "middle")
+```
+
+```{r}
+buehler_data <- "../code/saved-model-results/cv-performance/kfold-cv-metrics.buehler.csv" %>% 
+  read_delim(delim = ",") %>%
+  mutate(metric = ifelse(metric=="accuracy", "Accuracy", metric)) %>%
+  mutate(metric = ifelse(metric=="F1", "F1-Score", metric)) %>%
+  mutate(metric = factor(metric, levels = c("MCC", "Accuracy", "F1-Score"))) %>% 
+  mutate(model = ifelse(model == "CNN-Branched", "Branched CNN", model))
+
+buehler_cv_plot <- ggplot(data = buehler_data, aes(x = metric, y = value, fill = model)) +
+  stat_boxplot(geom = "errorbar", position = position_dodge(0.8), width = 0.2) + 
+  geom_boxplot(outlier.shape = 1, position = position_dodge(0.8), width = 0.7) + 
+  scale_fill_manual(values = c("#86BBD8", "#758E4F", "#F6AE2D", "#F26419")) + 
+  scale_y_continuous(limits=c(0.18, 0.82)) + 
+  labs(fill = "Model") + 
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    axis.title = element_blank(),
+    axis.text = element_text(size = 11),
+    legend.position = "bottom",
+    legend.text = element_text(size = 11),
+    panel.border = element_rect(colour = "black", fill = NA))
+
+buehler_ovr_data <- "../code/saved-model-results/cv-performance/kfold-cv-metrics-ovr.buehler.csv" %>%
+  read_delim(delim = ",") %>%
+  mutate(metric = ifelse(metric=="auc", "ROC-AUC (One-vs-Rest)", metric)) %>%
+  mutate(metric = ifelse(metric=="auprc", "AUPRC (One-vs-Rest)", metric)) %>%
+  mutate(model = factor(
+    model, levels = c("cnn-xtra", "cnn", "cnn-lstm", "branched-cnn"),
+    labels = c("CNN-2D", "CNN-3D", "CNN-3D-LSTM", "Branched CNN"))) %>%
+  mutate(metric = factor(metric, levels = c("ROC-AUC (One-vs-Rest)", "AUPRC (One-vs-Rest)")))
+
+buehler_cv_ovr_plot <- ggplot(data = buehler_ovr_data, aes(x = pitch_type, y = value, fill = model)) +
+  stat_boxplot(geom = "errorbar", position = position_dodge(0.8), width = 0.2) + 
+  geom_boxplot(outlier.shape = 1, position = position_dodge(0.8), width = 0.7) + 
+  facet_wrap(~metric) +
+  scale_fill_manual(values = c("#86BBD8", "#758E4F", "#F6AE2D", "#F26419")) +
+  scale_y_continuous(limits=c(0.2, 1)) + 
+  labs(fill = "Model") + 
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    strip.text = element_text(size = 11),
+    axis.title = element_blank(),
+    axis.text = element_text(size = 11),
+    legend.position = "bottom",
+    legend.text = element_text(size = 11),
+    strip.background = element_blank(),
+    panel.border = element_rect(colour = "black", fill = NA))
+
+buehler_plot <- ggarrange(buehler_cv_ovr_plot, buehler_cv_plot, ncol = 1, nrow = 2, common.legend = TRUE, legend = "bottom")
+ggsave(plot=buehler_plot, "../code/saved-model-results/plots/walker-buehler-cv-plot.png", height = 7, width = 8, dpi = 450)
+```
+```{r, fig.show = 'hold', out.width = "70%", fig.cap = "Figure 4. Multiclass pitch classification metric visualization for Walker Buehler. One-vs-rest metrics are stratified on the x-axis by pitch type. Pitch types include fastball (FB), fastball with movement (FBwM), and off-speed (OFF)."}
+knitr::include_graphics(c("../code/saved-model-results/plots/walker-buehler-cv-plot.png"))
+``` 
+
+# Discussion
+## A Statement on Model Performance
+To my surprise, our CNN-2D model conclusively outperformed our more complex model architectures. Further consideration will be required to determine the cause for this. Perhaps we can use this result to make adjustments to our more complex models and achieve even better performance. 
+
+## Implications
+Results from this proof of concept demonstrate the effectiveness of using in-game video footage and deep learning for pitch prediction tasks. We were able to develop a model that is capable of effectively discriminating between pitches using pre-delivery pose information. This tells us that, in some instances (e.g., Tyler Glasnow's 2019 season), tangible differences exist in a pitcher's motion or positioning that can help us predict the pitch they are about to throw.
+
+In light of these results, potential applications of this technology are intriguing. Two obvious applications exist in the world of baseball. First, it would be interesting to establish a singular deep learning model architecture that could be trained and tested on any given pitcher. Metrics from a player-specific model could be used to measure that pitcher's predictability during a certain time span. Pitchers would aim to *beat* the model and produce poor prediction metrics, which would be indicative of the pitcher's ability to hide what they are throwing. Second, this technology can be used for outcomes other than pitch classification. For example, organizations could use this methodology to predict pitch quality. This could potentially help interested parties identify either beneficial or detrimental aspects in a pitcher's pitching mechanics.  
+
+## Limitations & Next Steps
+Despite the promise of these results, we have identified two limitations that should be addressed. First, deep learning approaches require large sample sizes. While our data collection process is capable of gathering large samples of data (e.g., season-long data), organizations might often times be interested in determining a pitcher's predictability during a short time span. For example, a pitcher might become predictable over the course of a few games. It would be difficult to use a deep learning model to characterize a pitcher's predictability over such a short time span due to the small sample size. Second, we have yet to explore methods for interpreting classification results. Model interpretability will play a vital role in the usefulness of this technology. We plan to test deep learning interpretation approaches (e.g., Grad-CAM) in future work.  
+
 
