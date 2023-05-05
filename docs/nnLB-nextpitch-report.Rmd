@@ -1,6 +1,6 @@
 ---
 title: "nnLB: Next Pitch"
-subtitle: "A Novel Deep Learning Approach to MLB Pitch Prediction"
+subtitle: "A Novel Deep Learning Approach to MLB Pitch Prediction Using In-Game Video Footage"
 author: "Brenton Graham"
 date: "2023-05-05"
 output: 
@@ -16,7 +16,6 @@ output:
 ```{css, echo=FALSE}
 table { caption-side: bottom }
 ```
-
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
 require(dplyr)
 require(kableExtra)
@@ -33,13 +32,24 @@ knitr::opts_chunk$set(
     warning     = FALSE)
 ```
 
+```{r}
+htmltools::a(
+  href = "https://github.com/BrentonGraham/nnLB-NextPitch",
+  htmltools::img(
+  src = knitr::image_uri("github-mark/github-mark.png"), 
+  alt = 'logo', style = 'position:absolute; top:0; right:0; padding:10px ;height:75px; width:75px'))
+```
+
+# Abstract
+The importance of analytics in baseball has grown considerably in recent decades. Accordingly, Major League Baseball (MLB) organizations have invested substantial resources into the research and development of advanced statistical methods that can be leveraged to gain competitive advantages. Pitch prediction has emerged as one of these active areas of research. Here we develop a novel deep learning approach for pitch prediction. Using pose estimation time-series data from in-game video footage, we train two pitcher-specific convolutional neural networks (CNNs) to predict the pitches of Tyler Glasnow (2019 season) and Walker Buehler (2021 season). Notably, our selected model achieves a prediction accuracy of 87.1% and an area under the curve (AUC) of 0.919 on a holdout test set for Tyler Glasnow's 2019 season. These results demonstrate the effectiveness of using in-game video footage and deep learning for pitch prediction tasks.  
+
 # Introduction
-Organizations across all major sports leagues have adopted data-driven decision-making approaches to remain current and competitive in recent decades. Among these leagues, Major League Baseball (MLB) is widely recognized as the pioneer in embracing analytics. In fact, an entire domain of sports-based analytics, termed *sabermetrics*, is devoted to baseball-specific statistics and analysis. Consequently, a wealth of high-resolution public data and untapped opportunities exist within the world of baseball.  
+Organizations across all major sports leagues have adopted data-driven decision-making approaches to remain competitive in recent decades. Among these leagues, Major League Baseball is widely recognized as the pioneer in embracing analytics. In fact, an entire domain of sports-based analytics, termed *sabermetrics*, is devoted to baseball-specific statistics and analysis. Consequently, a wealth of high-resolution public data and untapped opportunities exist within the world of baseball.  
 
 Baseball enthusiasts would agree that success within the sport relies heavily on the game within the game. Identifying and exploiting small advantages can yield significant returns in achieving desired outcomes. Here, we introduce a deep learning method that utilizes in-game video footage to predict pitches. This endeavor is motivated by two factors. First, a reliable pitch classifier can provide batters with an edge during live at-bats. Second, an interpretable deep learning model can give pitchers insight into how predictable they are and how they can conceal their pitches more effectively.  
 
 # Related Work & Novelty
-Pitch prediction seems to be one of the most explored prediction tasks in baseball. Nevertheless, we seek to distinguish our work by utilizing novel feature sets and methodologies. Most well-cited articles focusing on binary and multiclass pitch prediction make use of traditional machine learning classifiers, such as linear discriminant analysis (LDA), support vector machines (SVM), and k-nearest neighbors (KNN)^[1](https://www.semanticscholar.org/paper/Predicting-the-Next-Pitch-Ganeshapillai-Guttag/e455030bd945ceffcbf2fc99bb12271ee9c013ff),[2](https://www.researchgate.net/publication/315544592_A_Dynamic_Feature_Selection_Based_LDA_Approach_to_Baseball_Pitch_Prediction),[3](https://content.iospress.com/articles/journal-of-sports-analytics/jsa171),[4](https://www.semanticscholar.org/paper/Applying-Machine-Learning-Techniques-to-Baseball-Hamilton-Hoang/c56a36aebb401fe41b34991c8a0933c0ba142caf)^. Deep learning models, including an attention-based long short-term memory recurrent neural network (LSTM-RNN) and an LSTM-based encoder-decoder, have also been used for pitch prediction^[5](https://community.fangraphs.com/no-pitch-is-an-island-pitch-prediction-with-sequence-to-sequence-deep-learning/),[6](https://ieeexplore.ieee.org/document/9859411)^. Each of these articles make use of tabular game data, however.  
+Pitch prediction is one of the most explored prediction tasks in baseball. Nevertheless, we seek to distinguish our work by utilizing novel feature sets and methodologies. Most well-cited articles focusing on binary and multiclass pitch prediction make use of traditional machine learning classifiers, such as linear discriminant analysis (LDA), support vector machines (SVM), and k-nearest neighbors (KNN)^[1](https://www.semanticscholar.org/paper/Predicting-the-Next-Pitch-Ganeshapillai-Guttag/e455030bd945ceffcbf2fc99bb12271ee9c013ff),[2](https://www.researchgate.net/publication/315544592_A_Dynamic_Feature_Selection_Based_LDA_Approach_to_Baseball_Pitch_Prediction),[3](https://content.iospress.com/articles/journal-of-sports-analytics/jsa171),[4](https://www.semanticscholar.org/paper/Applying-Machine-Learning-Techniques-to-Baseball-Hamilton-Hoang/c56a36aebb401fe41b34991c8a0933c0ba142caf)^. Deep learning models, including an attention-based long short-term memory recurrent neural network (LSTM-RNN) and an LSTM-based encoder-decoder, have also been used for pitch prediction^[5](https://community.fangraphs.com/no-pitch-is-an-island-pitch-prediction-with-sequence-to-sequence-deep-learning/),[6](https://ieeexplore.ieee.org/document/9859411)^. Each of these articles make use of tabular game data, however.  
 
 One article, a thesis from California Polytechnic State University, San Luis Obispo, approached the pitch classification problem from an innovative perspective^[7](https://digitalcommons.calpoly.edu/cgi/viewcontent.cgi?article=3865&context=theses)^. The author uses an object detection software ([`Detectron2`](https://github.com/facebookresearch/detectron2)) and a pose estimation software ([`OpenPose`](https://github.com/CMU-Perceptual-Computing-Lab/openpose)) to extract features from video data. These tools are specifically used to detect the pitcher's glove position and pose at a static time point (the pitcher's set position). Our aim is to build upon concepts from this work and to use methodologies that address this work's limitations. Similar to this work, we use the OpenPose pose estimation software to extract features that are used to classify pitches. Our methodology is novel, however, for the following reasons. First, the author uses a traditional machine learning model (Random Forest) for classification while we use deep learning models. Second, the author uses data from a static time point while we leverage information from time-series data. Third, the author was constrained to using small sample sizes ($n < 100$). We have developed a data collection process that allows us to obtain features from roughly 1,000 pitches per pitcher. Nonetheless, we applaud this author's innovations and would like to cite this work as our report's inspiration.
 
@@ -100,6 +110,7 @@ We designed four candidate convolutional neural network (CNN) architectures for 
 Prior to modeling, we split the data set into a cross-validation (CV) set (80% of the data) and holdout test set (20% of the data). CV and test set sample sizes are shown for each pitcher in Table 2. Data set splits were stratified by the outcome to ensure balanced class representation across each set. We then used stratified $k$-fold CV with five folds to evaluate each candidate architecture. During 5-fold CV, the CV data set is split into 5 folds. Five separate models (per candidate model) are then trained using $k-1$ (four) folds as the training data set and one fold as the validation data set. The original holdout test set is used to evaluate each of the five models. Features were standardized by removing the mean and scaling to unit variance. The mean and variance values used for standardization were learned from the training set and applied to the validation set and holdout test set during each round of 5-fold CV.
 
 ```{r}
+options(knitr.kable.NA = '--')
 col_names <- c('Pitch Type', 'CV Set', 'Test Set', 'Class % (Test)',	'CV Set', 'Test Set', 'Class % (Test)')
 data.frame(
   "pitch_type" = c("FB", "FBwM", "OFF", "Total"),
@@ -170,15 +181,13 @@ glasnow_auc <- ggplot(glasnow_auc_data) +
   geom_line(aes(x = fpr, y = tpr, color = model), lwd = 1) +
   geom_segment(aes(x = 0, xend = 1, y = 0, yend = 1), linetype = "dashed", lwd = 0.2, color = "gray70") +
   labs(x = "1 - Specificity", y = "Sensitivity") +
-  scale_x_continuous(expand=c(0, 0), limits = c(0, 1), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
-  scale_y_continuous(expand=c(0, 0), limits = c(0, 1), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
+  scale_x_continuous(limits = c(0, 1), expand = c(0, 0), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
+  scale_y_continuous(limits = c(0, 1), expand = c(0, 0), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
   scale_color_manual(
     values = c("#86BBD8", "#758E4F", "#F6AE2D", "#F26419"),
     labels = c("CNN-2D (AUC = 0.919)", "CNN-3D (AUC = 0.896)", "CNN-3D-LSTM (AUC = 0.889)", "Branched CNN (AUC = 0.877)")) +
-  #ggtitle("ROC Curve") +
   theme_bw() +
   theme(
-    #plot.title = element_text(hjust = 0.5, size = 14),
     legend.title = element_blank(),
     legend.position = c(0.68, 0.19),
     legend.text = element_text(size = 9.5),
@@ -192,16 +201,14 @@ glasnow_auprc <- ggplot(glasnow_auprc_data) +
   labs(x = "Recall", y = "Precision") +
   geom_segment(
     aes(x = 0, xend = 1, y = min(glasnow_auprc_data$precision), yend = min(glasnow_auprc_data$precision)), 
-    linetype = "dashed", lwd = 0.2, color = "gray60") +
-  scale_x_continuous(expand=c(0, 0), limits = c(0, 1), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
-  scale_y_continuous(expand=c(0, 0), limits = c(0, 1), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
+    linetype = "dashed", lwd = 0.2, color = "gray70") +
+  scale_x_continuous(limits = c(0, 1), expand = c(0, 0), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
+  scale_y_continuous(limits = c(0, 1), expand = c(0, 0), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1)) +
   scale_color_manual(
     values = c("#86BBD8", "#758E4F", "#F6AE2D", "#F26419"),
     labels = c("CNN-2D (AUPRC = 0.839)", "CNN-3D (AUPRC = 0.809)", "CNN-3D-LSTM (AUPRC = 0.810)", "Branched CNN (AUPRC = 0.774)")) +
-  #ggtitle("Precision-Recall Curve") +
   theme_bw() +
   theme(
-    #plot.title = element_text(hjust = 0.5, size = 14),
     legend.title = element_blank(),
     legend.position = c(0.66, 0.19),
     legend.text = element_text(size = 9.5),
@@ -226,11 +233,12 @@ glasnow_metrics <- ggplot(data = glasnow_data, aes(x = metric, y = value, fill =
   stat_boxplot(geom = "errorbar", position = position_dodge(0.8), width = 0.2) + 
   geom_boxplot(outlier.shape = 1, position = position_dodge(0.8), width = 0.7) + 
   scale_fill_manual(values = c("#86BBD8", "#758E4F", "#F6AE2D", "#F26419")) + 
-  scale_y_continuous(limits=c(0.5, 1)) + 
+  scale_y_continuous(limits = c(0.5, 1), expand = c(0, 0)) + 
   labs(fill = "Model") + 
   theme_bw() +
   theme(
     panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
     axis.title = element_blank(),
     axis.text = element_text(size = 10),
     legend.position = "bottom",
@@ -243,8 +251,38 @@ ggsave(plot=glasnow_plot, "../code/saved-model-results/plots/tyler-glasnow-cv-pl
 knitr::include_graphics(c("../code/saved-model-results/plots/tyler-glasnow-cv-plot.png"))
 ``` 
 
+```{r}
+# Import loss data
+glasnow_loss <- "../code/saved-model-results/cv-performance/loss-curve-data.glasnow.csv" %>%
+  read_delim(delim = ",") %>%
+  mutate(Fold = factor(fold, levels = c(0:4), labels = c("Fold 1", "Fold 2", "Fold 3", "Fold 4", "Fold 5"))) %>%
+  mutate(model = factor(
+    model, levels = c("CNN-2D", "CNN-3D", "CNN-3D-LSTM", "Branched CNN")))
+
+# Plot training and validation loss
+glasnow_loss_plot <- ggplot(glasnow_loss, aes(x = epoch, y = loss, color = dataset)) +
+  geom_line(aes(linetype = Fold), lwd = 0.4) +
+  facet_wrap(~model) +
+  guides(linetype = FALSE) +
+  scale_color_manual(values = c("#545E75", "#DC851F"), labels = c("Training", "Validation")) +
+  theme_bw() +
+  labs(x = "Epoch", y = "Binary Cross-Entropy") +
+  theme(
+    legend.title = element_blank(),
+    legend.text = element_text(size = 9),
+    panel.grid = element_blank(),
+    strip.background = element_rect(fill = "black"),
+    strip.text = element_text(colour = 'white', size = 9))
+
+ggsave(plot=glasnow_loss_plot, "../code/saved-model-results/plots/tyler-glasnow-loss-plot.png", height = 4, width = 6, dpi = 450)
+```
+
+```{r, fig.show = 'hold', out.width = "70%", fig.cap = "Figure 4. Training and validation loss curves for 5-fold CV binary classification models (Tyler Glasnow models)."}
+knitr::include_graphics(c("../code/saved-model-results/plots/tyler-glasnow-loss-plot.png"))
+``` 
+
 ## Walker Buehler
-Multiclass pitch classification results from Walker Buehler's 2021 regular season are shown in Table 4 and Figure 4 below. Again, the CNN-2D model definitively outperformed all other models, achieving a weighted F1-score of 0.638 and 63.6% accuracy (compared to a naive classifier's accuracy of 41.7%). On the surface, the results here are not as compelling as those reported for the binary classification of Tyler Glasnow's pitches. The results are a bit more interesting, however, when considering class-specific performance metrics such as one-versus-rest AUC. The model achieves one-versus-rest AUC scores of 0.825 and 0.852 for fastballs and off-speed pitches, respectively. This indicates that the model is able to effectively discriminate between both fastballs and non-fastballs and off-speed and non-off-speed pitches. The model's performance is hampered by an inability to discriminate between fastballs with movement and other pitch types. All things considered, we might expect to see more exciting results if we converted this multiclass prediction task to a binary prediction task.  
+Multiclass pitch classification results from Walker Buehler's 2021 regular season are shown in Table 4 and Figure 5 below. Again, the CNN-2D model definitively outperformed all other models, achieving a weighted F1-score of 0.638 and 63.6% accuracy (compared to a naive classifier's accuracy of 41.7%). On the surface, the results here are not as compelling as those reported for the binary classification of Tyler Glasnow's pitches. The results are a bit more interesting, however, when considering class-specific performance metrics such as one-versus-rest AUC. The model achieves one-versus-rest AUC scores of 0.825 and 0.852 for fastballs and off-speed pitches, respectively. This indicates that the model is able to effectively discriminate between both fastballs and non-fastballs and off-speed and non-off-speed pitches. The model's performance is hampered by an inability to discriminate between fastballs with movement and other pitch types. All things considered, we might expect to see more exciting results if we converted this multiclass prediction task to a binary prediction task.  
 
 ```{r}
 buehler_table_data <- "../code/saved-model-results/cv-performance/cv-performance-table.buehler.csv" %>%
@@ -285,11 +323,12 @@ buehler_cv_plot <- ggplot(data = buehler_data, aes(x = metric, y = value, fill =
   stat_boxplot(geom = "errorbar", position = position_dodge(0.8), width = 0.2) + 
   geom_boxplot(outlier.shape = 1, position = position_dodge(0.8), width = 0.7) + 
   scale_fill_manual(values = c("#86BBD8", "#758E4F", "#F6AE2D", "#F26419")) + 
-  scale_y_continuous(limits=c(0.18, 0.82)) + 
+  scale_y_continuous(limits = c(0.18, 0.82), expand = c(0, 0)) + 
   labs(fill = "Model") + 
   theme_bw() +
   theme(
     panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
     axis.title = element_blank(),
     axis.text = element_text(size = 11),
     legend.position = "bottom",
@@ -315,6 +354,7 @@ buehler_cv_ovr_plot <- ggplot(data = buehler_ovr_data, aes(x = pitch_type, y = v
   theme_bw() +
   theme(
     panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
     strip.text = element_text(size = 11),
     axis.title = element_blank(),
     axis.text = element_text(size = 11),
@@ -326,8 +366,39 @@ buehler_cv_ovr_plot <- ggplot(data = buehler_ovr_data, aes(x = pitch_type, y = v
 buehler_plot <- ggarrange(buehler_cv_ovr_plot, buehler_cv_plot, ncol = 1, nrow = 2, common.legend = TRUE, legend = "bottom")
 ggsave(plot=buehler_plot, "../code/saved-model-results/plots/walker-buehler-cv-plot.png", height = 7, width = 8, dpi = 450)
 ```
-```{r, fig.show = 'hold', out.width = "70%", fig.cap = "Figure 4. Multiclass pitch classification metric visualization for Walker Buehler. One-vs-rest metrics are stratified on the x-axis by pitch type. Pitch types include fastball (FB), fastball with movement (FBwM), and off-speed (OFF)."}
+
+```{r, fig.show = 'hold', out.width = "70%", fig.cap = "Figure 5. Multiclass pitch classification metric visualization for Walker Buehler. One-vs-rest metrics are stratified on the x-axis by pitch type. Pitch types include fastball (FB), fastball with movement (FBwM), and off-speed (OFF)."}
 knitr::include_graphics(c("../code/saved-model-results/plots/walker-buehler-cv-plot.png"))
+``` 
+
+```{r}
+# Import loss data
+buehler_loss <- "../code/saved-model-results/cv-performance/loss-curve-data.buehler.csv" %>%
+  read_delim(delim = ",") %>%
+  mutate(Fold = factor(fold, levels = c(0:4), labels = c("Fold 1", "Fold 2", "Fold 3", "Fold 4", "Fold 5"))) %>%
+  mutate(model = factor(
+    model, levels = c("CNN-2D", "CNN-3D", "CNN-3D-LSTM", "Branched CNN")))
+
+# Plot training and validation loss
+buehler_loss_plot <- ggplot(buehler_loss, aes(x = epoch, y = loss, color = dataset)) +
+  geom_line(aes(linetype = Fold), lwd = 0.4) +
+  facet_wrap(~model) +
+  guides(linetype = FALSE) +
+  scale_color_manual(values = c("#545E75", "#DC851F"), labels = c("Training", "Validation")) +
+  theme_bw() +
+  labs(x = "Epoch", y = "Categorical Cross-Entropy") +
+  theme(
+    legend.title = element_blank(),
+    legend.text = element_text(size = 9),
+    panel.grid = element_blank(),
+    strip.background = element_rect(fill = "black"),
+    strip.text = element_text(colour = 'white', size = 9))
+
+ggsave(plot=buehler_loss_plot, "../code/saved-model-results/plots/walker-buehler-loss-plot.png", height = 4, width = 6, dpi = 450)
+```
+
+```{r, fig.show = 'hold', out.width = "70%", fig.cap = "Figure 6. Training and validation loss curves for 5-fold CV multiclass classification models (Walker Buehler models)."}
+knitr::include_graphics(c("../code/saved-model-results/plots/walker-buehler-loss-plot.png"))
 ``` 
 
 # Discussion
