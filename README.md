@@ -7,7 +7,7 @@ The importance of analytics in baseball has grown considerably in recent decades
 The full HTML report for this repo can be found [here](https://github.com/BrentonGraham/nnLB-NextPitch/blob/main/docs/nnLB-nextpitch-report.html). We currently recommend that users download and view this this report locally for the best user experience.
 
 ### Feature Extraction Pipeline
-Video -> Image | Pitcher Detection & Background Blurring | OpenPose Pose Estimation
+Video → Image | Pitcher Detection &\n Background Blurring | OpenPose Pose Estimation
 --- | --- | ---
 ![pipeline-step1-vid2images](https://user-images.githubusercontent.com/46132172/236989149-3f24ab40-9dc0-40a7-b7ac-5a22bdfc6be4.gif) | ![pipeline-step2-blur](https://user-images.githubusercontent.com/46132172/236989162-d2589707-df16-46cb-abee-929fafd33bb5.gif) | ![pipeline-step3-plot](https://user-images.githubusercontent.com/46132172/236989173-acc2302c-d6e5-49dc-9ed0-9b5993a6c843.gif)
 
