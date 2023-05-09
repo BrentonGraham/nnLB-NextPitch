@@ -11,6 +11,11 @@ Video → Image Conversion | Pitcher Detection & <br /> Background Blurring | Op
 --- | --- | ---
 ![pipeline-step1-vid2images](https://user-images.githubusercontent.com/46132172/236989149-3f24ab40-9dc0-40a7-b7ac-5a22bdfc6be4.gif) | ![pipeline-step2-blur](https://user-images.githubusercontent.com/46132172/236989162-d2589707-df16-46cb-abee-929fafd33bb5.gif) | ![pipeline-step3-plot](https://user-images.githubusercontent.com/46132172/236989173-acc2302c-d6e5-49dc-9ed0-9b5993a6c843.gif)
 
+### A Look at the Pose Estimation Time Series Data
+Original Video | Pose Estimation of the Left Knee
+--- | ---
+![fig2-1](https://user-images.githubusercontent.com/46132172/236993590-ca7493dc-30a8-4df9-bdac-e35d77af50ee.gif) | ![fig2-2](https://user-images.githubusercontent.com/46132172/236993613-59b91d17-6348-47de-84bb-feeec1ecfdff.gif)
+
 ### Model Performance
 #### Tyler Glasnow
 ![tyler-glasnow-cv-plot](https://user-images.githubusercontent.com/46132172/236987526-0fbfe195-bd55-45fd-bf00-46019d6ec031.png)
